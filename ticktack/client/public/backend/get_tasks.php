@@ -5,7 +5,7 @@ header('Content-Type: application/json');
 
 // Database connection
 $host = 'localhost';
-$db   = 'ticktack';  // change this to your database name
+$db   = 'ticktack';  
 $user = 'root';      // default XAMPP username
 $pass = '';          // default XAMPP password is empty
 $charset = 'utf8mb4';

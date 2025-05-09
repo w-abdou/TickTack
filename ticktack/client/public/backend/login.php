@@ -1,16 +1,36 @@
 <?php
-require 'db.php';
+require_once 'db.php';
 
-$email = $_POST['email'];
-$password = $_POST['password'];
+// Get JSON data from the request
+$data = json_decode(file_get_contents("php://input"), true);
 
-$stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-$stmt->execute([$email]);
-$user = $stmt->fetch();
-
-if ($user && password_verify($password, $user['password'])) {
-  echo "Login successful!";
-} else {
-  echo "Invalid credentials!";
+if (!isset($data['email']) || !isset($data['password'])) {
+    echo json_encode(["success" => false, "message" => "Missing credentials"]);
+    exit();
 }
+
+$email = $data['email'];
+$password = $data['password'];
+
+// Prepare SQL to get user by email
+$sql = "SELECT * FROM users WHERE email = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result && $result->num_rows === 1) {
+    $user = $result->fetch_assoc();
+
+    // Compare password exactly (replace with password_verify() if using hashes)
+    if ($password === $user['password']) {
+        echo json_encode(["success" => true, "username" => $user['username']]);
+    } else {
+        echo json_encode(["success" => false, "message" => "Incorrect password"]);
+    }
+} else {
+    echo json_encode(["success" => false, "message" => "User not found"]);
+}
+
+$conn->close();
 ?>
