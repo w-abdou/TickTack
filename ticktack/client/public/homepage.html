@@ -77,10 +77,18 @@
           <button class="add-card">+ Add Card</button>
         </div>
       </div>
-      <button onclick="logout()">Logout</button> 
+      <button class="logout-btn" onclick="logout()">Logout</button>
     </main>
   </div>
+  
 
-  <script src="script.js"></script>
+  <script src="app.js"></script>
+  <script>
+    function logout() {
+      console.log("Logging out...");
+      localStorage.removeItem('loggedIn');
+      window.location.href = 'login.html';
+    }
+  </script>
 </body>
 </html>

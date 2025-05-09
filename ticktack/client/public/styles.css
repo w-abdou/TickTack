@@ -1,6 +1,6 @@
   body {
     margin: 0;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f5f7fb;
     color: #333;
   }
@@ -159,3 +159,19 @@
   .add-card:hover {
     background: #b2bec3;
   }
+
+  .logout-btn {
+  margin-top: 30px;
+  padding: 10px 20px;
+  background-color: #e74c3c; /* red for logout */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.logout-btn:hover {
+  background-color: #c0392b;
+}

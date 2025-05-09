@@ -17,12 +17,6 @@ document.querySelectorAll('.add-card').forEach(button => {
 if (!localStorage.getItem('loggedIn')) {
   window.location.href = 'login.html';
 }
-//logout function
-function logout() {
-  localStorage.removeItem('loggedIn');
-  window.location.href = 'login.html';
-}
-
 
 // Optional: Drag & Drop (Basic)
 let dragged;
