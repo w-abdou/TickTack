@@ -8,79 +8,43 @@
 <body>
   <div class="app">
     <aside class="sidebar">
-      <h2>Hawk Workspace</h2>
-      <input type="text" placeholder="Search">
-      <nav>
-        <ul>
-          <li>Activity</li>
-          <li>All Updates</li>
-          <li>Settings</li>
-        </ul>
-      </nav>
+      <h2>User's Workspace</h2>
       <h3>Projects</h3>
-      <ul class="projects">
-        <li>Finance Mobile App</li>
-        <li>Education Mobile App</li>
-        <li class="active">Health Mobile App</li>
-      </ul>
+      <ul class="projects"></ul>
       <button>Add New</button>
     </aside>
 
     <main class="main-content">
       <header>
-        <h1>Mobile App Projects</h1>
+        <h1>Project name </h1>
         <button class="invite">+ Invite</button>
       </header>
       
       <div class="board">
         <div class="column" data-status="todo">
           <h2>Todo</h2>
-          <div class="card design">
-            <p class="tag">Design</p>
-            <h3>High priority mobile app design health</h3>
-            <p>High priority work will be done on this app</p>
-            <div class="progress"><span style="width: 20%"></span></div>
-          </div>
           <button class="add-card">+ Add Card</button>
         </div>
 
         <div class="column" data-status="in-work">
           <h2>In Work</h2>
-          <div class="card job">
-            <p class="tag">Job</p>
-            <h3>Implement a low priority software</h3>
-            <p>A very simple software will be made quickly</p>
-            <div class="progress"><span style="width: 40%"></span></div>
-          </div>
           <button class="add-card">+ Add Card</button>
         </div>
 
         <div class="column" data-status="in-progress">
           <h2>In Progress</h2>
-          <div class="card planning">
-            <p class="tag">Planning</p>
-            <h3>Hospital application</h3>
-            <p>Needs a quick application</p>
-            <div class="progress"><span style="width: 60%"></span></div>
-          </div>
           <button class="add-card">+ Add Card</button>
         </div>
 
         <div class="column" data-status="completed">
           <h2>Completed</h2>
-          <div class="card research">
-            <p class="tag">Research</p>
-            <h3>For a private hospital research</h3>
-            <p>Finalized research completed</p>
-            <div class="progress"><span style="width: 100%"></span></div>
-          </div>
           <button class="add-card">+ Add Card</button>
         </div>
       </div>
+      
       <button class="logout-btn" onclick="logout()">Logout</button>
     </main>
   </div>
-  
 
   <script src="app.js"></script>
   <script>

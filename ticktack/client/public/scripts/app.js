@@ -4,7 +4,6 @@ document.querySelectorAll('.add-card').forEach(button => {
     const newCard = document.createElement('div');
     newCard.classList.add('card');
     newCard.innerHTML = `
-      <p class="tag" style="background:#3498db; color:white;">New</p>
       <h3>New Task</h3>
       <p>Describe the task...</p>
       <div class="progress"><span style="width:0%"></span></div>
