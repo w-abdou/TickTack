@@ -1,10 +1,9 @@
-<!-- signup.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Signup</title>
-  <link rel="stylesheet" href="signup.css">
+  <link rel="stylesheet" href="styles/signup.css">
 </head>
 <body>
   <div class="auth-container">
@@ -22,7 +21,7 @@
     document.getElementById('signupForm').addEventListener('submit', function(e) {
       e.preventDefault();
       localStorage.setItem('loggedIn', 'true');
-      window.location.href = 'homepage.html';
+      window.location.href = 'dashboard.html';
     });
   </script>
 </body>

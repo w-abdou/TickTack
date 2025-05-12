@@ -13,7 +13,7 @@ if (data.success) {
   console.log("Login success, redirecting...");
   localStorage.setItem('loggedIn', true);
   localStorage.setItem('username', data.username);  
-  window.location.href = 'homepage.html';  
+  window.location.href = 'dashboard.html';  
 } else {
   alert(data.message);
 }
