@@ -1,24 +1,21 @@
-document.querySelector('#login-form').addEventListener('submit', async (e) => {
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  
-  const email = document.querySelector('#email').value;
-  const password = document.querySelector('#password').value;
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
 
-  const response = await fetch('backend/login.php', {
+  const res = await fetch('backend/login.php', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
     body: JSON.stringify({ email, password })
   });
+  const data = await res.json();
 
-  const result = await response.json();
+if (data.success) {
+  console.log("Login success, redirecting...");
+  localStorage.setItem('loggedIn', true);
+  localStorage.setItem('username', data.username);  
+  window.location.href = 'homepage.html';  
+} else {
+  alert(data.message);
+}
 
-  if (result.success) {
-    localStorage.setItem('loggedIn', true);
-    localStorage.setItem('username', result.username);
-    window.location.href = 'index.html';
-  } else {
-    alert(result.message);
-  }
 });
