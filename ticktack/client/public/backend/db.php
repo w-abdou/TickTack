@@ -1,9 +1,9 @@
 <?php
 // Database configuration
-$host = 'localhost';         // Host name (for XAMPP, use 'localhost')
-$username = 'root';          // Default MySQL username for XAMPP
-$password = '';              // Default password is empty for XAMPP
-$dbname = 'ticktack'; // Your database name (replace with your actual database name)
+$host = 'localhost';         
+$username = 'root';          
+$password = '';           
+$dbname = 'ticktack'; 
 
 // Create a connection
 $conn = new mysqli($host, $username, $password, $dbname);

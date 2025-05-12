@@ -1,11 +1,11 @@
 <?php
 // add_task.php
-include 'db.php'; // Your DB connection file
+include 'db.php'; 
 
 // Get data from frontend
 $title = $_POST['title'];
 $description = $_POST['description'];
-$project_id = $_POST['project_id']; // Optionally, link tasks to a project
+$project_id = $_POST['project_id']; 
 
 // Insert task into the database
 $query = "INSERT INTO tasks (title, description, project_id, status) VALUES ('$title', '$description', '$project_id', 'todo')";

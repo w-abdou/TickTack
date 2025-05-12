@@ -40,8 +40,8 @@ document.querySelectorAll('.add-card').forEach(button => {
     saveButton.addEventListener('click', () => {
       const title = newCard.querySelector('h3').innerText;
       const description = newCard.querySelector('p').innerText;
-      const project_id = 1; // You can dynamically set this based on the project/column
-
+      const project_id = 1; 
+      
       // Send POST request to add the task to the backend
       fetch('http://localhost/ticktack/backend/add_task.php', {
         method: 'POST',

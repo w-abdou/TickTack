@@ -9,6 +9,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
   });
   const data = await res.json();
 
+
 if (data.success) {
   console.log("Login success, redirecting...");
   localStorage.setItem('loggedIn', true);

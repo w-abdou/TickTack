@@ -6,9 +6,6 @@ $username = $data['username'];
 $email = $data['email'];
 $password = $data['password'];
 
-// Hash the password
-$hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
 // Prepare and execute insert statement
 $sql = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
 $stmt = $conn->prepare($sql);
