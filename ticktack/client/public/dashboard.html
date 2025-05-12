@@ -11,7 +11,7 @@
       <h2>User's Workspace</h2>
       <h3>Projects</h3>
       <ul class="projects"></ul>
-      <button>Add New</button>
+      <button id="add-project-btn">Add New Project</button>
     </aside>
 
     <main class="main-content">
@@ -45,7 +45,33 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <!-- Project Modal -->
+  <div id="project-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Add New Project</h2>
+      <form id="project-form">
+        <input type="text" id="project-name" placeholder="Project Name" required>
+        <textarea id="project-description" placeholder="Project Description" required></textarea>
+        <button type="submit">Create Project</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Card Modal -->
+  <div id="card-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Add New Card</h2>
+      <form id="card-form">
+        <input type="text" id="card-title" placeholder="Card Title" required>
+        <textarea id="card-description" placeholder="Card Description" required></textarea>
+        <button type="submit">Add Card</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="scripts/app.js"></script>
   <script>
     function logout() {
       console.log("Logging out...");
