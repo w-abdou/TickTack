@@ -2,42 +2,65 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mobile App Projects Dashboard</title>
+  <title>TickTack Dashboard</title>
   <link rel="stylesheet" href="styles/dashboard.css">
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
       <h2>User's Workspace</h2>
+      <div class="search-box">
+        <input type="text" id="project-search" placeholder="Search projects...">
+      </div>
       <h3>Projects</h3>
       <ul class="projects"></ul>
       <button id="add-project-btn">Add New Project</button>
+      <div class="workspace-stats">
+        <div class="stat-item">
+          <span class="stat-label">Total Projects</span>
+          <span class="stat-value" id="total-projects">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Total Tasks</span>
+          <span class="stat-value" id="total-tasks">0</span>
+        </div>
+      </div>
     </aside>
 
     <main class="main-content">
-      <header>
-        <h1>Project name </h1>
+      <header class="main-header">
+        <h1>Project name</h1>
       </header>
+
       
       <div class="board">
-        <div class="column" data-status="todo">
+        <div class="column todo-column" data-status="todo">
           <h2>Todo</h2>
-          <button class="add-card">+ Add Card</button>
+          <div class="cards"></div>
+          <button class="add-card" disabled>+ Add Card</button>
         </div>
 
-        <div class="column" data-status="in-work">
+        <div class="column in-work-column" data-status="in-work">
           <h2>In Work</h2>
-          <button class="add-card">+ Add Card</button>
+          <div class="column-header">
+            <span class="task-count">0</span>
+            <button class="add-card">+ Add Card</button>
+          </div>
         </div>
 
-        <div class="column" data-status="in-progress">
+        <div class="column in-progress-column" data-status="in-progress">
           <h2>In Progress</h2>
-          <button class="add-card">+ Add Card</button>
+          <div class="cards"></div>
+          <button class="add-card" disabled>+ Add Card</button>
+          </div>
         </div>
 
         <div class="column" data-status="completed">
           <h2>Completed</h2>
-          <button class="add-card">+ Add Card</button>
+          <div class="column-header">
+            <span class="task-count">0</span>
+            <button class="add-card">+ Add Card</button>
+          </div>
         </div>
       </div>
       
@@ -49,11 +72,18 @@
   <div id="project-modal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
-      <h2>Add New Project</h2>
-      <form id="project-form">
-        <input type="text" id="project-name" placeholder="Project Name" required>
-        <textarea id="project-description" placeholder="Project Description" required></textarea>
-        <button type="submit">Create Project</button>
+      <h2 id="modal-title">Add New Project</h2>
+      <form id="project-form" autocomplete="off">
+        <input type="hidden" id="project-id" name="project-id">
+        <div class="form-group">
+          <label for="project-name">Project Name</label>
+          <input type="text" id="project-name" name="project-name" placeholder="Enter project name" required>
+        </div>
+        <div class="form-group">
+          <label for="project-description">Project Description</label>
+          <textarea id="project-description" name="project-description" placeholder="Enter project description"></textarea>
+        </div>
+        <button type="submit" id="project-submit-btn">Create Project</button>
       </form>
     </div>
   </div>
@@ -66,6 +96,17 @@
       <form id="card-form">
         <input type="text" id="card-title" placeholder="Card Title" required>
         <textarea id="card-description" placeholder="Card Description" required></textarea>
+        <div class="form-row">
+          <select id="card-priority" required>
+            <option value="low">Low Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="high">High Priority</option>
+          </select>
+          <input type="date" id="card-due-date" required>
+        </div>
+        <div class="form-row">
+          <input type="text" id="card-tags" placeholder="Tags (comma separated)">
+        </div>
         <button type="submit">Add Card</button>
       </form>
     </div>
