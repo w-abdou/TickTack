@@ -67,21 +67,34 @@ try {
             
             verifyProjectOwnership($data['project_id'], $userId);
             
-            $stmt = $pdo->prepare("INSERT INTO tasks (title, description, project_id, priority, due_date) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO tasks (title, description, project_id, priority, due_date, status, tags) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            
+            // Log input data before execution
+            error_log("Attempting to insert task with data: " . print_r($data, true));
+
             $result = $stmt->execute([
                 $data['title'],
                 $data['description'] ?? null,
                 $data['project_id'],
                 $data['priority'] ?? 'medium',
-                $data['due_date'] ?? null
+                $data['due_date'] ?? null,
+                $data['status'] ?? 'todo',
+                $data['tags'] ?? null
             ]);
             
             if (!$result) {
-                throw new Exception('Failed to create task');
+                // Get detailed error information from PDO
+                $errorInfo = $stmt->errorInfo();
+                $errorMessage = "PDO Execute failed: " . ($errorInfo[2] ?? "Unknown PDO error");
+                error_log("Task insertion failed: " . $errorMessage);
+                throw new Exception($errorMessage);
             }
             
             $taskId = $pdo->lastInsertId();
             
+            // Log successful insertion
+            error_log("Task inserted successfully with ID: " . $taskId);
+
             echo json_encode([
                 'status' => 'success',
                 'message' => 'Task created successfully',
