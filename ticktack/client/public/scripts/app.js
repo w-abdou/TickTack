@@ -4,99 +4,229 @@ let projects = [];
 let tasks = [];
 
 window.addEventListener('load', () => {
-  loadProjects();
   setupEventListeners();
   setupSearch();
   setupViewToggle();
-  setupTaskFilter();
+  // setupTaskFilter();
 });
 
-// Load all projects
-function loadProjects() {
-  fetch('/TickTack/ticktack/backend/get_projects.php')
-    .then(response => response.json())
-    .then(data => {
-      projects = data;
-      const projectsList = document.querySelector('.projects');
-      projectsList.innerHTML = '';
-      
-      projects.forEach(project => {
-        const li = document.createElement('li');
-        li.textContent = project.name;
-        li.dataset.projectId = project.id;
-        li.addEventListener('click', () => loadProjectTasks(project.id, project.name, project.description));
-        projectsList.appendChild(li);
-      });
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if user is logged in first
+    const user = checkUser();
+    if (!user) {
+        // checkUser should handle redirection, so just return here
+        return;
+    }
 
-      updateWorkspaceStats();
-    })
-    .catch(error => {
-      console.error('Error loading projects:', error);
+    // If a project_id is in the URL, load that project directly
+    const projectId = getProjectIdFromUrl();
+    if (projectId) {
+        // Fetch project info (name, description) from backend and then load tasks
+        // Pass the user object to the fetch headers
+        fetch(`/TickTack/ticktack/backend/projects.php?id=${projectId}`, {
+          headers: {
+            'Authorization': user.id.toString() // Use the user object obtained at the start
+          }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success' && data.data) {
+            // When loading a specific project, we still need tasks, which might need user, but loadProjectTasks doesn't currently take user
+            // Let's keep loadProjectTasks calling checkUser for now, and focus on passing user to initializeApp path
+            loadProjectTasks(data.data.id, data.data.name, data.data.description);
+          } else {
+            console.error('Error loading project from URL:', data.message);
+            alert('Failed to load project from URL.');
+            // Optionally redirect to homepage if project loading fails
+            // window.location.href = 'home.html';
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching project details for URL ID:', error);
+          alert('Failed to fetch project details.');
+          // Optionally redirect to homepage on error
+          // window.location.href = 'home.html';
+        });
+    } else {
+        // Otherwise, initialize the full app, passing the user object
+        initializeApp(user);
+    }
+});
+
+function initializeApp(user) { // Accept user object
+    // Load initial projects, passing the user object
+    loadProjects(user);
+
+    // Setup event listeners
+    setupEventListeners();
+    setupSearch();
+    setupViewToggle();
+
+    // Setup drag and drop
+    setupDragAndDrop();
+}
+
+function setupDragAndDrop() {
+    document.querySelectorAll('.column').forEach(column => {
+        column.addEventListener('dragover', e => {
+            e.preventDefault();
+            const draggingCard = document.querySelector('.dragging');
+            if (draggingCard) {
+                column.querySelector('.cards').appendChild(draggingCard);
+            }
+        });
+
+        column.addEventListener('drop', async e => {
+            e.preventDefault();
+            const taskId = e.dataTransfer.getData('text/plain');
+            const newStatus = column.dataset.status;
+            
+            try {
+                const response = await fetch(`/TickTack/ticktack/backend/tasks.php?id=${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    loadProjectTasks(currentProjectId);
+                }
+            } catch (error) {
+                console.error('Error updating task status:', error);
+            }
+        });
     });
 }
 
+// Load all projects
+async function loadProjects(user) { // Accept user object
+    // Remove internal checkUser call, rely on user being passed
+    // const currentUser = checkUser(); // REMOVED
+    // if (!currentUser) return; // REMOVED
+
+    console.log('Loading projects for user:', user.id); // Use passed user
+
+    try {
+        const response = await fetch('/TickTack/ticktack/backend/projects.php', {
+            headers: {
+                'Authorization': user.id.toString() // Use passed user
+            }
+        });
+        console.log('Projects response:', response);
+        const data = await response.json();
+        console.log('Projects data:', data);
+        if (data.status === 'success') {
+            projects = data.data;
+            const projectsList = document.querySelector('.projects');
+            projectsList.innerHTML = '';
+            
+            if (!projects || projects.length === 0) {
+                projectsList.innerHTML = '<li class="no-projects">No projects yet</li>';
+                return;
+            }
+            
+            projects.forEach(project => {
+                const li = document.createElement('li');
+                // Keep onclick/event listeners as is for now, they call functions that checkUser internally
+                li.innerHTML = `
+                    <span class="project-name">${project.name}</span>
+                    <div class="project-actions">
+                        <button onclick="editProject(${project.id}, event)" class="edit-btn">✏️</button>
+                        <button onclick="deleteProject(${project.id}, event)" class="delete-btn">🗑️</button>
+                    </div>
+                `;
+                li.addEventListener('click', () => loadProjectTasks(project.id, project.name, project.description));
+                projectsList.appendChild(li);
+            });
+
+            updateWorkspaceStats();
+        } else {
+            throw new Error(data.message || 'Failed to load projects');
+        }
+    } catch (error) {
+        console.error('Error loading projects:', error);
+        const projectsList = document.querySelector('.projects');
+        projectsList.innerHTML = '<li class="no-projects">Error loading projects</li>';
+    }
+}
+
 // Load tasks for a specific project
-function loadProjectTasks(projectId, projectName, projectDescription) {
+async function loadProjectTasks(projectId, projectName, projectDescription) {
   currentProjectId = projectId;
   document.querySelector('header h1').textContent = projectName;
   document.querySelector('.project-description').textContent = projectDescription || '';
 
-  // Clear existing cards
-  document.querySelectorAll('.column .card').forEach(card => card.remove());
+  // Enable add card buttons
+  document.querySelectorAll('.add-card').forEach(btn => btn.disabled = false);
 
-  fetch(`/TickTack/ticktack/backend/get_tasks.php?project_id=${projectId}`)
-    .then(response => response.json())
-    .then(data => {
-      tasks = data;
+  // Clear existing cards
+  document.querySelectorAll('.column .cards').forEach(container => container.innerHTML = '');
+
+  try {
+    const response = await fetch(`/TickTack/ticktack/backend/tasks.php?project_id=${projectId}`);
+    const data = await response.json();
+    if (data.status === 'success') {
+      tasks = data.data;
       renderTasks();
       updateTaskCounts();
-      updateWorkspaceStats();
-    })
-    .catch(error => {
-      console.error('Error fetching tasks:', error);
-    });
+    }
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+  }
 }
 
-function renderTasks(filteredTasks = null) {
-  const tasksToRender = filteredTasks || tasks;
-  
-  // Clear existing cards
-  document.querySelectorAll('.column .card').forEach(card => card.remove());
+function renderTasks() {
+  const columns = {
+    'todo': document.querySelector('.todo-column .cards'),
+    'in-work': document.querySelector('.in-work-column .cards'),
+    'in-progress': document.querySelector('.in-progress-column .cards'),
+    'completed': document.querySelector('.column[data-status="completed"] .cards')
+  };
 
-  tasksToRender.forEach(task => {
-    const column = document.querySelector(`[data-status="${task.status}"]`);
-    if (!column) return;
+  // Clear all columns
+  Object.values(columns).forEach(column => column.innerHTML = '');
 
-    const taskCard = document.createElement('div');
-    taskCard.classList.add('card');
-    taskCard.dataset.priority = task.priority || 'low';
-    
-    const tags = task.tags ? task.tags.split(',').map(tag => 
-      `<span class="tag">${tag.trim()}</span>`
-    ).join('') : '';
-
-    taskCard.innerHTML = `
-      <h3>${task.title}</h3>
-      <p>${task.description}</p>
-      ${tags ? `<div class="tags">${tags}</div>` : ''}
-      <div class="card-meta">
-        <span class="priority">Priority: ${task.priority || 'low'}</span>
-        ${task.due_date ? `<span class="due-date">Due: ${new Date(task.due_date).toLocaleDateString()}</span>` : ''}
-      </div>
-    `;
-
-    if (currentView === 'board') {
-      column.insertBefore(taskCard, column.querySelector('.column-header'));
-    } else {
-      const listView = document.querySelector('.list-view');
-      if (listView) {
-        taskCard.innerHTML += `<span class="status">${task.status}</span>`;
-        listView.appendChild(taskCard);
-      }
-    }
+  // Render tasks in their respective columns
+  tasks.forEach(task => {
+    const card = createTaskCard(task);
+    const column = columns[task.status] || columns['todo'];
+    column.appendChild(card);
   });
+}
 
-  updateTaskCounts();
+function createTaskCard(task) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.taskId = task.id;
+  card.draggable = true;
+
+  const priorityClass = `priority-${task.priority}`;
+  const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date';
+
+  card.innerHTML = `
+    <div class="card-header">
+      <h3>${task.title}</h3>
+      <span class="priority ${priorityClass}">${task.priority}</span>
+    </div>
+    <p class="card-description">${task.description || ''}</p>
+    <div class="card-footer">
+      <span class="due-date">${dueDate}</span>
+      <div class="card-actions">
+        <button onclick="editTask(${task.id}, event)" class="edit-btn">✏️</button>
+        <button onclick="deleteTask(${task.id}, event)" class="delete-btn">🗑️</button>
+      </div>
+    </div>
+  `;
+
+  // Add drag and drop functionality
+  card.addEventListener('dragstart', handleDragStart);
+  card.addEventListener('dragend', handleDragEnd);
+
+  return card;
 }
 
 function setupSearch() {
@@ -142,16 +272,16 @@ function setupViewToggle() {
   });
 }
 
-function setupTaskFilter() {
-  const filterSelect = document.getElementById('task-filter');
-  filterSelect.addEventListener('change', () => {
-    const priority = filterSelect.value;
-    const filteredTasks = priority === 'all' ? 
-      tasks : 
-      tasks.filter(task => task.priority === priority);
-    renderTasks(filteredTasks);
-  });
-}
+// function setupTaskFilter() {
+//   const filterSelect = document.getElementById('task-filter');
+//   filterSelect.addEventListener('change', () => {
+//     const priority = filterSelect.value;
+//     const filteredTasks = priority === 'all' ? 
+//       tasks : 
+//       tasks.filter(task => task.priority === priority);
+//     renderTasks(filteredTasks);
+//   });
+// }
 
 function updateTaskCounts() {
   document.querySelectorAll('.column').forEach(column => {
@@ -162,8 +292,16 @@ function updateTaskCounts() {
 }
 
 function updateWorkspaceStats() {
-  document.getElementById('total-projects').textContent = projects.length;
-  document.getElementById('total-tasks').textContent = tasks.length;
+  const totalProjects = document.getElementById('total-projects');
+  const totalTasks = document.getElementById('total-tasks');
+  
+  if (totalProjects) {
+    totalProjects.textContent = projects.length;
+  }
+  
+  if (totalTasks) {
+    totalTasks.textContent = tasks.length;
+  }
 }
 
 function setupEventListeners() {
@@ -178,17 +316,19 @@ function setupEventListeners() {
 
   // Card modal functionality
   const cardModal = document.getElementById('card-modal');
+  const cardForm = document.getElementById('card-form');
+
+  // Add event listeners to all .add-card buttons
   document.querySelectorAll('.add-card').forEach(button => {
-    button.addEventListener('click', () => {
-      if (!currentProjectId) {
-        alert('Please select a project first!');
-        return;
-      }
-      const column = button.closest('.column');
-      cardModal.dataset.status = column.dataset.status;
-      cardModal.style.display = 'block';
+    button.addEventListener('click', function() {
+      const column = this.closest('.column');
+      const status = column.dataset.status;
+      addTask(status); // Just call addTask with the status
     });
   });
+
+  // Card form submit handler (OUTSIDE of addTask)
+  cardForm.addEventListener('submit', handleCardFormSubmit);
 
   // Close modal functionality
   document.querySelectorAll('.close').forEach(closeBtn => {
@@ -202,7 +342,7 @@ function setupEventListeners() {
     e.preventDefault();
 
     // Recheck user session
-    const currentUser = checkUser();
+    const currentUser = checkUser(); // Ensure this is the first use of currentUser in this scope
     if (!currentUser) return;
 
     const projectId = document.getElementById('project-id').value;
@@ -225,7 +365,7 @@ function setupEventListeners() {
         method: isEditing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': currentUser.id.toString()
+          'Authorization': currentUser.id.toString() // Should be safe now
         },
         body: JSON.stringify({ name, description })
       });
@@ -246,36 +386,6 @@ function setupEventListeners() {
       console.error('Error creating project:', error);
       alert(error.message || 'Failed to create project');
     }
-  });
-
-  // Card form submission
-  const cardForm = document.getElementById('card-form');
-  cardForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const title = document.getElementById('card-title').value;
-    const description = document.getElementById('card-description').value;
-    const status = cardModal.dataset.status;
-
-    fetch('/TickTack/ticktack/backend/add_task.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&project_id=${currentProjectId}&status=${status}`,
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'success') {
-        cardModal.style.display = 'none';
-        cardForm.reset();
-        loadProjectTasks(currentProjectId, document.querySelector('header h1').textContent);
-      }
-      alert(data.message);
-    })
-    .catch(error => {
-      console.error('Error saving task:', error);
-      alert('There was an error saving the task.');
-    });
   });
 }
 
@@ -299,21 +409,28 @@ let user = null;
 function checkUser() {
     try {
         const userData = localStorage.getItem('user');
+        console.log('checkUser: userData from localStorage', userData); // Log userData
+
         if (!userData) {
+            console.log('checkUser: No userData, redirecting to login.html'); // Log redirect
             window.location.href = 'login.html';
             return null;
         }
 
         const user = JSON.parse(userData);
+        console.log('checkUser: Parsed user object', user); // Log parsed user
+
         if (!user || !user.id) {
+            console.log('checkUser: Invalid user object or missing ID, clearing localStorage and redirecting', user); // Log invalid user
             localStorage.removeItem('user');
             window.location.href = 'login.html';
             return null;
         }
 
+        console.log('checkUser: Valid user found', user); // Log valid user
         return user;
     } catch (error) {
-        console.error('Error checking user:', error);
+        console.error('Error checking user:', error); // Log error
         localStorage.removeItem('user');
         window.location.href = 'login.html';
         return null;
@@ -322,149 +439,6 @@ function checkUser() {
 
 // Global variable to store current project
 let currentProject = null;
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if user is logged in
-    const user = checkUser();
-    if (!user) return;
-
-    // Modal elements
-    const projectModal = document.getElementById('project-modal');
-    const closeBtn = document.querySelector('.close');
-    const addProjectBtn = document.getElementById('add-project-btn');
-    const projectForm = document.getElementById('project-form');
-    const logoutBtn = document.getElementById('logout-btn');
-
-    // Disable add card buttons initially
-    const addCardBtns = document.querySelectorAll('.add-card');
-    addCardBtns.forEach(btn => btn.disabled = true);
-
-    // Add card button click handlers
-    addCardBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (!currentProject) {
-                alert('Please select a project first!');
-                return;
-            }
-            const status = btn.closest('.column').dataset.status;
-            addCard(status);
-        });
-    });
-
-    // Add Project button click handler
-    if (addProjectBtn) {
-        addProjectBtn.addEventListener('click', () => {
-            // Reset form
-            projectForm.reset();
-            document.getElementById('project-id').value = '';
-            document.getElementById('modal-title').textContent = 'Add New Project';
-            document.getElementById('project-submit-btn').textContent = 'Create Project';
-            projectModal.style.display = 'block';
-        });
-    }
-
-    // Close button click handler
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            projectModal.style.display = 'none';
-        });
-    }
-
-    // Close modal when clicking outside
-    window.addEventListener('click', (event) => {
-        if (event.target === projectModal) {
-            projectModal.style.display = 'none';
-        }
-    });
-
-    // Project form submission
-    if (projectForm) {
-        // Remove any existing event listeners
-        const newProjectForm = projectForm.cloneNode(true);
-        projectForm.parentNode.replaceChild(newProjectForm, projectForm);
-        projectForm = newProjectForm;
-
-        projectForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // Recheck user session
-            const currentUser = checkUser();
-            if (!currentUser) return;
-
-            const projectId = document.getElementById('project-id').value;
-            const name = document.getElementById('project-name').value.trim();
-            const description = document.getElementById('project-description').value.trim();
-
-            if (!name) {
-                alert('Project name is required');
-                return;
-            }
-
-            const isEditing = !!projectId;
-
-            try {
-                const url = isEditing 
-                    ? `/TickTack/ticktack/backend/projects.php?id=${projectId}`
-                    : '/TickTack/ticktack/backend/projects.php';
-
-                console.log('Sending request to:', url);
-                console.log('Request data:', { name, description });
-
-                const response = await fetch(url, {
-                    method: isEditing ? 'PUT' : 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': currentUser.id.toString()
-                    },
-                    body: JSON.stringify({ name, description })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('Server response:', data);
-                
-                if (data.status === 'success') {
-                    // Reset form and modal
-                    projectModal.style.display = 'none';
-                    projectForm.reset();
-                    document.getElementById('project-id').value = '';
-                    document.getElementById('modal-title').textContent = 'Add New Project';
-                    document.getElementById('project-submit-btn').textContent = 'Create Project';
-                    
-                    // Reload projects
-                    await loadProjects();
-                    
-                    // If this was a new project, select it
-                    if (!isEditing && data.data && data.data.id) {
-                        const projectElement = document.querySelector(`[data-project-id="${data.data.id}"]`);
-                        if (projectElement) {
-                            selectProject(data.data, projectElement);
-                        }
-                    }
-                } else {
-                    throw new Error(data.message || `Failed to ${isEditing ? 'update' : 'create'} project`);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert(error.message || `Failed to ${isEditing ? 'update' : 'create'} project`);
-            }
-        });
-    }
-
-    // Logout button click handler
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
-        });
-    }
-
-    // Load initial projects
-    loadProjects();
-});
 
 // Function to edit project
 async function editProject(projectId, event) {
@@ -557,43 +531,36 @@ async function deleteProject(projectId, event) {
     }
 }
 
-// Function to add a new card
-async function addCard(status) {
-    if (!currentProject) {
-        alert('Please select a project first!');
-        return;
-    }
+// Function to add a new task
+function addTask(status) {
+  const cardModal = document.getElementById('card-modal');
+  const cardForm = document.getElementById('card-form');
+  const projectSelectRow = document.getElementById('project-select-row');
+  const projectSelect = document.getElementById('modal-project-select');
 
-    const title = prompt('Enter card title:');
-    if (!title) return;
+  // Set the current status for the form handler to use
+  currentTaskStatus = status;
 
-    const currentUser = checkUser();
-    if (!currentUser) return;
+  // Reset form
+  cardForm.reset();
 
-    try {
-        const response = await fetch('/TickTack/ticktack/backend/cards.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': currentUser.id.toString()
-            },
-            body: JSON.stringify({
-                title,
-                status,
-                project_id: currentProject.id
-            })
-        });
+  // If no project is selected, show the project dropdown and populate it
+  if (!currentProjectId) {
+    projectSelectRow.style.display = '';
+    projectSelect.innerHTML = '';
+    // Populate dropdown with all projects
+    projects.forEach(project => {
+      const option = document.createElement('option');
+      option.value = project.id;
+      option.textContent = project.name;
+      projectSelect.appendChild(option);
+    });
+  } else {
+    projectSelectRow.style.display = 'none';
+  }
 
-        const data = await response.json();
-        if (data.status === 'success') {
-            loadCards(currentProject.id);
-        } else {
-            throw new Error(data.message || 'Failed to create card');
-        }
-    } catch (error) {
-        console.error('Error creating card:', error);
-        alert('Failed to create card');
-    }
+  // Show modal
+  cardModal.style.display = 'block';
 }
 
 // Function to handle project selection
@@ -614,10 +581,6 @@ function selectProject(project, element) {
     if (header) {
         header.textContent = project.name;
     }
-
-    // Enable add card buttons
-    const addCardBtns = document.querySelectorAll('.add-card');
-    addCardBtns.forEach(btn => btn.disabled = false);
 
     // Load cards for the selected project
     loadCards(project.id);
@@ -730,23 +693,81 @@ function createProjectCard(project) {
     return card;
 }
 
-// Function to load projects
-async function loadProjects() {
+// Drag and drop functionality
+function handleDragStart(e) {
+  e.target.classList.add('dragging');
+  e.dataTransfer.setData('text/plain', e.target.dataset.taskId);
+}
+
+function handleDragEnd(e) {
+  e.target.classList.remove('dragging');
+}
+
+// Helper to get project_id from URL
+function getProjectIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('project_id');
+}
+
+// Card form submit handler (OUTSIDE of addTask)
+async function handleCardFormSubmit(e) {
+  e.preventDefault();
+
+  const cardForm = document.getElementById('card-form');
+  const projectSelect = document.getElementById('modal-project-select');
+  let projectIdToUse = currentProjectId;
+  if (!projectIdToUse) {
+    projectIdToUse = projectSelect.value;
+  }
+
+  const taskData = {
+    title: document.getElementById('card-title').value,
+    description: document.getElementById('card-description').value,
+    priority: document.getElementById('card-priority').value,
+    due_date: document.getElementById('card-due-date').value,
+    tags: document.getElementById('card-tags').value,
+    status: currentTaskStatus,
+    project_id: projectIdToUse
+  };
+
+  try {
+    // Get current user for authorization
     const currentUser = checkUser();
-    if (!currentUser) return;
-
-    try {
-        const response = await fetch('/TickTack/ticktack/backend/projects.php', {
-            headers: {
-                'Authorization': currentUser.id.toString()
-            }
-        });
-
-        const data = await response.json();
-        if (data.status === 'success') {
-            displayProjects(data.data || []);
-        }
-    } catch (error) {
-        console.error('Error loading projects:', error);
+    if (!currentUser) {
+      // checkUser already redirects, but return here just in case
+      return;
     }
+
+    // Ensure currentUser is a valid object before accessing properties
+    if (typeof currentUser !== 'object' || currentUser === null || !currentUser.id) {
+        console.error('Invalid currentUser object:', currentUser);
+        alert('User authentication failed. Please log in again.');
+        logout(); // Attempt to clear session and redirect
+        return;
+    }
+
+    const response = await fetch('/TickTack/ticktack/backend/tasks.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': currentUser.id.toString() // Should be safe now
+      },
+      body: JSON.stringify(taskData)
+    });
+
+    const data = await response.json();
+
+    if (data.status === 'success') {
+      document.getElementById('card-modal').style.display = 'none';
+      cardForm.reset();
+      if (currentProjectId) {
+        loadProjectTasks(currentProjectId);
+      }
+    } else {
+      throw new Error(data.message || 'Failed to create task');
+    }
+  } catch (error) {
+    console.error('Error creating task:', error);
+    alert(error.message);
+  }
 }

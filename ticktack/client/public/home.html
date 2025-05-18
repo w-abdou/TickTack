@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TickTack Home</title>
+  <link rel="stylesheet" href="styles/home.css">
+</head>
+<body>
+  <div class="home-container">
+    <header>
+      <h1>Welcome to TickTack</h1>
+      <p class="subtitle">Your simple project & task manager</p>
+      <button id="logout-btn" class="logout-btn">Logout</button>
+    </header>
+    <main>
+      <h1 id="workspace-title">Workspace</h1>
+      <section class="projects-section">
+        <h2>Your Projects</h2>
+        <ul id="project-list" class="project-list"></ul>
+        <button id="add-project-btn" class="add-project-btn">+ Add New Project</button>
+      </section>
+      <!-- Project Modal -->
+      <div id="project-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <h2 id="modal-title">Add New Project</h2>
+          <form id="project-form" autocomplete="off">
+            <div class="form-group">
+              <label for="project-name">Project Name</label>
+              <input type="text" id="project-name" name="project-name" placeholder="Enter project name" required>
+            </div>
+            <div class="form-group">
+              <label for="project-description">Project Description</label>
+              <textarea id="project-description" name="project-description" placeholder="Enter project description"></textarea>
+            </div>
+            <button type="submit" id="project-submit-btn">Create Project</button>
+          </form>
+        </div>
+      </div>
+      
+    </main>
+  </div>
+  <script>
+    // Check for valid user session
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id) {
+      window.location.href = 'login.html';
+    }
+
+    // Set workspace title to username's Workspace
+    document.getElementById('workspace-title').textContent = `${user.username}'s Workspace`;
+
+    // Logout functionality
+    document.getElementById('logout-btn').onclick = function() {
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+    };
+
+    // Fetch projects and display them
+    fetch('/TickTack/ticktack/backend/projects.php', {
+      headers: {
+        'Authorization': user.id
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      const list = document.getElementById('project-list');
+      if (data.status === 'success' && data.data && data.data.length > 0) {
+        data.data.forEach(project => {
+          const li = document.createElement('li');
+          li.innerHTML = `<a href="dashboard.html?project_id=${project.id}">${project.name}</a>`;
+          list.appendChild(li);
+        });
+      } else {
+        list.innerHTML = '<li class="no-projects">No projects found.</li>';
+      }
+    });
+
+    // Add New Project modal logic
+    const addProjectBtn = document.getElementById('add-project-btn');
+    const projectModal = document.getElementById('project-modal');
+    const closeBtn = projectModal.querySelector('.close');
+    const projectForm = document.getElementById('project-form');
+
+    addProjectBtn.onclick = function() {
+      projectModal.style.display = 'block';
+    };
+    closeBtn.onclick = function() {
+      projectModal.style.display = 'none';
+    };
+    window.onclick = function(event) {
+      if (event.target === projectModal) {
+        projectModal.style.display = 'none';
+      }
+    };
+    projectForm.onsubmit = async function(e) {
+      e.preventDefault();
+      const name = document.getElementById('project-name').value.trim();
+      const description = document.getElementById('project-description').value.trim();
+      if (!name) {
+        alert('Project name is required');
+        return;
+      }
+      const response = await fetch('/TickTack/ticktack/backend/projects.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': user.id
+        },
+        body: JSON.stringify({ name, description })
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        projectModal.style.display = 'none';
+        projectForm.reset();
+        // Reload the project list
+        window.location.reload();
+      } else {
+        alert(data.message || 'Failed to create project');
+      }
+    };
+  </script>
+</body>
+</html> 

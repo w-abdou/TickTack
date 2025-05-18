@@ -34,8 +34,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 email: data.user.email
             }));
             
-            // Redirect to dashboard
-            window.location.href = 'dashboard.html';
+            // Redirect to homepage
+            window.location.href = 'home.html';
         } else {
             throw new Error(data.message || 'Login failed');
         }

@@ -8,7 +8,7 @@
 <body>
   <div class="app">
     <aside class="sidebar">
-      <h2>User's Workspace</h2>
+      <h2 id="workspace-title">User's Workspace</h2>
       <div class="search-box">
         <input type="text" id="project-search" placeholder="Search projects...">
       </div>
@@ -25,6 +25,8 @@
           <span class="stat-value" id="total-tasks">0</span>
         </div>
       </div>
+      <button id="back-home-btn" class="back-home-btn">Back to Homepage</button>
+      <button class="logout-btn" onclick="logout()">Logout</button>
     </aside>
 
     <main class="main-content">
@@ -32,39 +34,42 @@
         <h1>Project name</h1>
       </header>
 
+      <select id="task-filter">
+        <option value="all">All Priorities</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
       
       <div class="board">
         <div class="column todo-column" data-status="todo">
           <h2>Todo</h2>
+          <span class="task-count">0</span>
           <div class="cards"></div>
-          <button class="add-card" disabled>+ Add Card</button>
+          <button class="add-card">+ Add Card</button>
         </div>
 
         <div class="column in-work-column" data-status="in-work">
           <h2>In Work</h2>
-          <div class="column-header">
-            <span class="task-count">0</span>
-            <button class="add-card">+ Add Card</button>
-          </div>
+          <span class="task-count">0</span>
+          <div class="cards"></div>
+          <button class="add-card">+ Add Card</button>
         </div>
 
         <div class="column in-progress-column" data-status="in-progress">
           <h2>In Progress</h2>
+          <span class="task-count">0</span>
           <div class="cards"></div>
-          <button class="add-card" disabled>+ Add Card</button>
-          </div>
+          <button class="add-card">+ Add Card</button>
         </div>
 
-        <div class="column" data-status="completed">
+        <div class="column completed-column" data-status="completed">
           <h2>Completed</h2>
-          <div class="column-header">
-            <span class="task-count">0</span>
-            <button class="add-card">+ Add Card</button>
-          </div>
+          <span class="task-count">0</span>
+          <div class="cards"></div>
+          <button class="add-card">+ Add Card</button>
         </div>
       </div>
-      
-      <button class="logout-btn" onclick="logout()">Logout</button>
     </main>
   </div>
 
@@ -107,6 +112,9 @@
         <div class="form-row">
           <input type="text" id="card-tags" placeholder="Tags (comma separated)">
         </div>
+        <div class="form-row" id="project-select-row" style="display:none;">
+          <select id="modal-project-select"></select>
+        </div>
         <button type="submit">Add Card</button>
       </form>
     </div>
@@ -114,10 +122,20 @@
 
   <script src="scripts/app.js"></script>
   <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user && user.username) {
+        document.getElementById('workspace-title').textContent = `${user.username}'s Workspace`;
+      }
+      // Back to Homepage button
+      document.getElementById('back-home-btn').onclick = function() {
+        window.location.href = 'home.html';
+      };
+    });
     function logout() {
       console.log("Logging out...");
       localStorage.removeItem('loggedIn');
-      window.location.href = 'login.html';
+      window.location.href = 'home.html';
     }
   </script>
 </body>
