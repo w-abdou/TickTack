@@ -32,14 +32,28 @@
     <main class="main-content">
       <header class="main-header">
         <h1>Project name</h1>
+        <div class="project-description"></div>
       </header>
 
-      <select id="task-filter">
-        <option value="all">All Priorities</option>
-        <option value="low">Low</option>
-        <option value="medium">Medium</option>
-        <option value="high">High</option>
-      </select>
+      <div class="board-controls">
+        <div class="filter-sort-container">
+          <select id="task-filter" class="filter-select">
+            <option value="all">All Priorities</option>
+            <option value="high">High Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="low">Low Priority</option>
+          </select>
+          
+          <select id="task-sort" class="sort-select">
+            <option value="created-desc">Newest First</option>
+            <option value="created-asc">Oldest First</option>
+            <option value="due-date-asc">Due Date (Earliest)</option>
+            <option value="due-date-desc">Due Date (Latest)</option>
+            <option value="priority-high">Priority (High to Low)</option>
+            <option value="priority-low">Priority (Low to High)</option>
+          </select>
+        </div>
+      </div>
       
       <div class="board">
         <div class="column todo-column" data-status="todo">
@@ -97,25 +111,38 @@
   <div id="card-modal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
-      <h2>Add New Card</h2>
+      <h2 id="modal-title">Add New Task</h2>
       <form id="card-form">
-        <input type="text" id="card-title" placeholder="Card Title" required>
-        <textarea id="card-description" placeholder="Card Description" required></textarea>
-        <div class="form-row">
-          <select id="card-priority" required>
-            <option value="low">Low Priority</option>
-            <option value="medium">Medium Priority</option>
-            <option value="high">High Priority</option>
+        <input type="hidden" id="project-id" name="project-id">
+        <div class="form-group" id="project-select-row">
+          <label for="modal-project-select">Select Project</label>
+          <select id="modal-project-select" name="project_id"></select>
+        </div>
+        <div class="form-group">
+          <label for="card-title">Title</label>
+          <input type="text" id="card-title" name="title" required>
+        </div>
+        <div class="form-group">
+          <label for="card-description">Description</label>
+          <textarea id="card-description" name="description"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="card-priority">Priority</label>
+          <select id="card-priority" name="priority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
           </select>
-          <input type="date" id="card-due-date" required>
         </div>
-        <div class="form-row">
-          <input type="text" id="card-tags" placeholder="Tags (comma separated)">
+        <div class="form-group">
+          <label for="card-due-date">Due Date</label>
+          <input type="date" id="card-due-date" name="due-date">
         </div>
-        <div class="form-row" id="project-select-row" style="display:none;">
-          <select id="modal-project-select"></select>
+        <div class="form-group">
+          <label for="card-tags">Tags (comma-separated)</label>
+          <input type="text" id="card-tags" name="tags" placeholder="e.g., bug, feature, design">
         </div>
-        <button type="submit">Add Card</button>
+        <button type="submit" id="card-submit-btn">Create Task</button>
       </form>
     </div>
   </div>

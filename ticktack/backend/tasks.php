@@ -24,15 +24,23 @@ function getUserId() {
 // Verify project belongs to user
 function verifyProjectOwnership($projectId, $userId) {
     global $pdo;
+    error_log('verifyProjectOwnership: Checking ownership for project ID ' . $projectId . ' and user ID ' . $userId); // Log verification attempt
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM projects WHERE id = ? AND user_id = ?");
     $stmt->execute([$projectId, $userId]);
-    if ($stmt->fetchColumn() == 0) {
+    $count = $stmt->fetchColumn();
+    error_log('verifyProjectOwnership: Found ' . $count . ' matching projects.'); // Log verification result
+    if ($count == 0) {
+        error_log('verifyProjectOwnership: Verification failed.'); // Log verification failure
         throw new Exception('Project not found or access denied');
     }
+    error_log('verifyProjectOwnership: Verification successful.'); // Log verification success
 }
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];
+    error_log('Tasks.php received method: ' . $method); // Log request method
+    error_log('Tasks.php received GET params: ' . print_r($_GET, true)); // Log GET parameters
+    error_log('Tasks.php received POST/PUT data: ' . file_get_contents("php://input")); // Log POST/PUT data
     
     switch ($method) {
         case 'GET':
@@ -45,10 +53,18 @@ try {
             }
             
             verifyProjectOwnership($projectId, $userId);
+            error_log('Tasks.php: Passed project ownership verification.'); // Log after successful verification
             
-            $stmt = $pdo->prepare("SELECT * FROM tasks WHERE project_id = ? ORDER BY created_at DESC");
+            $stmt = $pdo->prepare("SELECT id, title, description, project_id, status, priority, due_date, tags, created_at, updated_at FROM tasks WHERE project_id = ? ORDER BY created_at DESC");
+            
+            // Log before executing the query
+            error_log('Tasks.php: Executing query to fetch tasks for project ID: ' . $projectId);
+            
             $stmt->execute([$projectId]);
             $tasks = $stmt->fetchAll();
+            
+            // Log successful fetch
+            error_log('Tasks.php: Successfully fetched ' . count($tasks) . ' tasks.');
             
             echo json_encode([
                 'status' => 'success',
@@ -113,13 +129,14 @@ try {
             
             verifyProjectOwnership($data['project_id'], $userId);
             
-            $stmt = $pdo->prepare("UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, due_date = ? WHERE id = ? AND project_id = ?");
+            $stmt = $pdo->prepare("UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, tags = ? WHERE id = ? AND project_id = ?");
             $result = $stmt->execute([
                 $data['title'],
                 $data['description'] ?? null,
                 $data['status'] ?? 'todo',
                 $data['priority'] ?? 'medium',
                 $data['due_date'] ?? null,
+                $data['tags'] ?? null,
                 $data['id'],
                 $data['project_id']
             ]);

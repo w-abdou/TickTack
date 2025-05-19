@@ -179,7 +179,7 @@ async function loadProjectTasks(projectId, projectName, projectDescription) {
   }
 }
 
-function renderTasks() {
+function renderTasks(tasksToRender = tasks) {
   const columns = {
     'todo': document.querySelector('.todo-column .cards'),
     'in-work': document.querySelector('.in-work-column .cards'),
@@ -191,7 +191,7 @@ function renderTasks() {
   Object.values(columns).forEach(column => column.innerHTML = '');
 
   // Render tasks in their respective columns
-  tasks.forEach(task => {
+  tasksToRender.forEach(task => {
     const card = createTaskCard(task);
     const column = columns[task.status] || columns['todo'];
     column.appendChild(card);
@@ -214,7 +214,9 @@ function createTaskCard(task) {
     </div>
     <p class="card-description">${task.description || ''}</p>
     <div class="card-footer">
-      <span class="due-date">${dueDate}</span>
+      <div class="card-meta">
+        <span class="due-date">${dueDate}</span>
+      </div>
       <div class="card-actions">
         <button onclick="editTask(${task.id}, event)" class="edit-btn">✏️</button>
         <button onclick="deleteTask(${task.id}, event)" class="delete-btn">🗑️</button>
@@ -272,16 +274,69 @@ function setupViewToggle() {
   });
 }
 
-// function setupTaskFilter() {
-//   const filterSelect = document.getElementById('task-filter');
-//   filterSelect.addEventListener('change', () => {
-//     const priority = filterSelect.value;
-//     const filteredTasks = priority === 'all' ? 
-//       tasks : 
-//       tasks.filter(task => task.priority === priority);
-//     renderTasks(filteredTasks);
-//   });
-// }
+function setupTaskFilter() {
+  const filterSelect = document.getElementById('task-filter');
+  const sortSelect = document.getElementById('task-sort');
+  
+  filterSelect.addEventListener('change', () => {
+    const priority = filterSelect.value;
+    const sortBy = sortSelect.value;
+    filterAndSortTasks(priority, sortBy);
+  });
+
+  sortSelect.addEventListener('change', () => {
+    const priority = filterSelect.value;
+    const sortBy = sortSelect.value;
+    filterAndSortTasks(priority, sortBy);
+  });
+}
+
+function filterAndSortTasks(priority, sortBy) {
+  let filteredTasks = [...tasks];
+  
+  // Apply priority filter
+  if (priority !== 'all') {
+    filteredTasks = filteredTasks.filter(task => task.priority === priority);
+  }
+  
+  // Apply sorting
+  switch (sortBy) {
+    case 'due-date-asc':
+      filteredTasks.sort((a, b) => {
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date) - new Date(b.due_date);
+      });
+      break;
+    case 'due-date-desc':
+      filteredTasks.sort((a, b) => {
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(b.due_date) - new Date(a.due_date);
+      });
+      break;
+    case 'priority-high':
+      filteredTasks.sort((a, b) => {
+        const priorityOrder = { high: 3, medium: 2, low: 1 };
+        return priorityOrder[b.priority] - priorityOrder[a.priority];
+      });
+      break;
+    case 'priority-low':
+      filteredTasks.sort((a, b) => {
+        const priorityOrder = { high: 3, medium: 2, low: 1 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+      break;
+    case 'created-desc':
+      filteredTasks.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      break;
+    case 'created-asc':
+      filteredTasks.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      break;
+  }
+  
+  renderTasks(filteredTasks);
+}
 
 function updateTaskCounts() {
   document.querySelectorAll('.column').forEach(column => {
@@ -731,26 +786,29 @@ async function handleCardFormSubmit(e) {
   };
 
   try {
-    // Get current user for authorization
     const currentUser = checkUser();
-    if (!currentUser) {
-      // checkUser already redirects, but return here just in case
+    if (!currentUser) return;
+
+    if (typeof currentUser !== 'object' || currentUser === null || !currentUser.id) {
+      console.error('Invalid currentUser object:', currentUser);
+      alert('User authentication failed. Please log in again.');
+      logout();
       return;
     }
 
-    // Ensure currentUser is a valid object before accessing properties
-    if (typeof currentUser !== 'object' || currentUser === null || !currentUser.id) {
-        console.error('Invalid currentUser object:', currentUser);
-        alert('User authentication failed. Please log in again.');
-        logout(); // Attempt to clear session and redirect
-        return;
+    // Check if we're editing an existing task
+    const taskId = cardForm.dataset.taskId;
+    const isEditing = !!taskId;
+
+    if (isEditing) {
+      taskData.id = taskId;
     }
 
-    const response = await fetch('/TickTack/ticktack/backend/tasks.php', {
-      method: 'POST',
+    const response = await fetch('/TickTack/ticktack/backend/tasks.php' + (isEditing ? `?id=${taskId}` : ''), {
+      method: isEditing ? 'PUT' : 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': currentUser.id.toString() // Should be safe now
+        'Authorization': currentUser.id.toString()
       },
       body: JSON.stringify(taskData)
     });
@@ -760,14 +818,100 @@ async function handleCardFormSubmit(e) {
     if (data.status === 'success') {
       document.getElementById('card-modal').style.display = 'none';
       cardForm.reset();
+      cardForm.removeAttribute('data-task-id'); // Clear task ID
+      document.getElementById('modal-title').textContent = 'Add New Task';
       if (currentProjectId) {
         loadProjectTasks(currentProjectId);
       }
     } else {
-      throw new Error(data.message || 'Failed to create task');
+      throw new Error(data.message || `Failed to ${isEditing ? 'update' : 'create'} task`);
     }
   } catch (error) {
-    console.error('Error creating task:', error);
+    console.error('Error handling task:', error);
     alert(error.message);
   }
+}
+
+// Function to edit a task
+async function editTask(taskId, event) {
+    if (event) {
+        event.stopPropagation(); // Prevent card click event
+    }
+
+    const currentUser = checkUser();
+    if (!currentUser) return;
+
+    try {
+        // Fetch task details
+        const response = await fetch(`/TickTack/ticktack/backend/tasks.php?id=${taskId}`, {
+            headers: {
+                'Authorization': currentUser.id.toString()
+            }
+        });
+        
+        const data = await response.json();
+        if (data.status === 'success' && data.data) {
+            const task = data.data;
+            
+            // Update modal for editing
+            const cardModal = document.getElementById('card-modal');
+            const cardForm = document.getElementById('card-form');
+            const modalTitle = document.getElementById('modal-title');
+            
+            modalTitle.textContent = 'Edit Task';
+            document.getElementById('card-title').value = task.title;
+            document.getElementById('card-description').value = task.description || '';
+            document.getElementById('card-priority').value = task.priority;
+            document.getElementById('card-due-date').value = task.due_date || '';
+            document.getElementById('card-tags').value = task.tags || '';
+            
+            // Store task ID for update
+            cardForm.dataset.taskId = taskId;
+            
+            // Show modal
+            cardModal.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error fetching task:', error);
+        alert('Failed to load task details');
+    }
+}
+
+// Function to delete a task
+async function deleteTask(taskId, event) {
+    if (event) {
+        event.stopPropagation(); // Prevent card click event
+    }
+
+    if (!confirm('Are you sure you want to delete this task?')) {
+        return;
+    }
+
+    const currentUser = checkUser();
+    if (!currentUser) return;
+
+    try {
+        const response = await fetch(`/TickTack/ticktack/backend/tasks.php?id=${taskId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': currentUser.id.toString()
+            },
+            body: JSON.stringify({
+                id: taskId,
+                project_id: currentProjectId
+            })
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            // Refresh tasks
+            loadProjectTasks(currentProjectId);
+        } else {
+            throw new Error(data.message || 'Failed to delete task');
+        }
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        alert('Failed to delete task');
+    }
 }
