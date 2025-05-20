@@ -32,30 +32,24 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(res => res.json())
         .then(data => {
           if (data.status === 'success' && data.data) {
-            // When loading a specific project, we still need tasks, which might need user, but loadProjectTasks doesn't currently take user
-            // Let's keep loadProjectTasks calling checkUser for now, and focus on passing user to initializeApp path
             loadProjectTasks(data.data.id, data.data.name, data.data.description);
           } else {
             console.error('Error loading project from URL:', data.message);
             alert('Failed to load project from URL.');
-            // Optionally redirect to homepage if project loading fails
-            // window.location.href = 'home.html';
+      
           }
         })
         .catch(error => {
           console.error('Error fetching project details for URL ID:', error);
           alert('Failed to fetch project details.');
-          // Optionally redirect to homepage on error
-          // window.location.href = 'home.html';
+       
         });
-    } else {
-        // Otherwise, initialize the full app, passing the user object
-        initializeApp(user);
+    } else {        initializeApp(user);
     }
 });
 
-function initializeApp(user) { // Accept user object
-    // Load initial projects, passing the user object
+function initializeApp(user) {
+  console.log('Initializing app with user:', user);
     loadProjects(user);
 
     // Setup event listeners
@@ -103,55 +97,46 @@ function setupDragAndDrop() {
 }
 
 // Load all projects
-async function loadProjects(user) { // Accept user object
-    // Remove internal checkUser call, rely on user being passed
-    // const currentUser = checkUser(); // REMOVED
-    // if (!currentUser) return; // REMOVED
+// Update the loadProjectTasks function to include user authentication
+async function loadProjectTasks(projectId, projectName, projectDescription) {
+  currentProjectId = projectId;
+  document.querySelector('header h1').textContent = projectName;
+  document.querySelector('.project-description').textContent = projectDescription || '';
 
-    console.log('Loading projects for user:', user.id); // Use passed user
+  // Enable add card buttons
+  document.querySelectorAll('.add-card').forEach(btn => btn.disabled = false);
 
-    try {
-        const response = await fetch('/TickTack/ticktack/backend/projects.php', {
-            headers: {
-                'Authorization': user.id.toString() // Use passed user
-            }
-        });
-        console.log('Projects response:', response);
-        const data = await response.json();
-        console.log('Projects data:', data);
-        if (data.status === 'success') {
-            projects = data.data;
-            const projectsList = document.querySelector('.projects');
-            projectsList.innerHTML = '';
-            
-            if (!projects || projects.length === 0) {
-                projectsList.innerHTML = '<li class="no-projects">No projects yet</li>';
-                return;
-            }
-            
-            projects.forEach(project => {
-                const li = document.createElement('li');
-                // Keep onclick/event listeners as is for now, they call functions that checkUser internally
-                li.innerHTML = `
-                    <span class="project-name">${project.name}</span>
-                    <div class="project-actions">
-                        <button onclick="editProject(${project.id}, event)" class="edit-btn">✏️</button>
-                        <button onclick="deleteProject(${project.id}, event)" class="delete-btn">🗑️</button>
-                    </div>
-                `;
-                li.addEventListener('click', () => loadProjectTasks(project.id, project.name, project.description));
-                projectsList.appendChild(li);
-            });
+  // Clear existing cards
+  document.querySelectorAll('.column .cards').forEach(container => container.innerHTML = '');
 
-            updateWorkspaceStats();
-        } else {
-            throw new Error(data.message || 'Failed to load projects');
-        }
-    } catch (error) {
-        console.error('Error loading projects:', error);
-        const projectsList = document.querySelector('.projects');
-        projectsList.innerHTML = '<li class="no-projects">Error loading projects</li>';
+  try {
+    // Get current user
+    const user = checkUser();
+    if (!user) return;
+
+    // Add Authorization header with user ID
+    const response = await fetch(`/TickTack/ticktack/backend/tasks.php?project_id=${projectId}`, {
+      headers: {
+        'Authorization': user.id.toString()
+      }
+    });
+    
+    // Debug response
+    console.log(`Task API Response Status: ${response.status}`);
+    
+    const data = await response.json();
+    console.log('Tasks data received:', data);
+    
+    if (data.status === 'success') {
+      tasks = data.data;
+      renderTasks();
+      updateTaskCounts();
+    } else {
+      console.error('Error in tasks response:', data.message);
     }
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+  }
 }
 
 // Load tasks for a specific project
@@ -462,34 +447,34 @@ let user = null;
 
 // Function to check if user is logged in
 function checkUser() {
-    try {
-        const userData = localStorage.getItem('user');
-        console.log('checkUser: userData from localStorage', userData); // Log userData
-
-        if (!userData) {
-            console.log('checkUser: No userData, redirecting to login.html'); // Log redirect
-            window.location.href = 'login.html';
-            return null;
-        }
-
-        const user = JSON.parse(userData);
-        console.log('checkUser: Parsed user object', user); // Log parsed user
-
-        if (!user || !user.id) {
-            console.log('checkUser: Invalid user object or missing ID, clearing localStorage and redirecting', user); // Log invalid user
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
-            return null;
-        }
-
-        console.log('checkUser: Valid user found', user); // Log valid user
-        return user;
-    } catch (error) {
-        console.error('Error checking user:', error); // Log error
-        localStorage.removeItem('user');
-        window.location.href = 'login.html';
-        return null;
-    }
+  try {
+      const userData = localStorage.getItem('user');
+      console.log('User data from localStorage:', userData);
+      
+      if (!userData) {
+          console.error('No user data found in localStorage');
+          window.location.href = 'login.html';
+          return null;
+      }
+      
+      const user = JSON.parse(userData);
+      console.log('Parsed user object:', user);
+      
+      if (!user || !user.id) {
+          console.error('Invalid user object or missing ID:', user);
+          localStorage.removeItem('user');
+          window.location.href = 'login.html';
+          return null;
+      }
+      
+      console.log('Valid user found with ID:', user.id);
+      return user;
+  } catch (error) {
+      console.error('Error checking user:', error);
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+      return null;
+  }
 }
 
 // Global variable to store current project

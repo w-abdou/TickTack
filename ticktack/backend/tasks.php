@@ -2,9 +2,14 @@
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 require_once 'db.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 // Get user ID from request
 function getUserId() {
@@ -38,9 +43,9 @@ function verifyProjectOwnership($projectId, $userId) {
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];
-    error_log('Tasks.php received method: ' . $method); // Log request method
-    error_log('Tasks.php received GET params: ' . print_r($_GET, true)); // Log GET parameters
-    error_log('Tasks.php received POST/PUT data: ' . file_get_contents("php://input")); // Log POST/PUT data
+    error_log('Tasks.php received method: ' . $method);
+    error_log('Tasks.php received GET params: ' . print_r($_GET, true));
+    error_log('Tasks.php received Authorization: ' . (isset(getallheaders()['Authorization']) ? getallheaders()['Authorization'] : 'not set'));
     
     switch ($method) {
         case 'GET':
